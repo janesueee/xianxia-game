@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>修仙乙女向LLM游戏</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- 修改移动端底部按钮布局 -->
+    <style>
+        @media (max-width: 768px) {
+            .fixed-options {
+                display: flex;
+                justify-content: space-between;
+            }
+            .status-bar .status-item {
+                text-align: left;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 主菜单页面 -->
+        <div id="main-menu" class="page active">
+            <div class="content-area">
+                <h1 class="title">修仙乙女向LLM游戏</h1>
+                <div class="menu-buttons">
+                    <button class="btn" onclick="showPage('character-creation')">新篇</button>
+                    <button class="btn" onclick="showPage('load-game')">再续</button>
+                    <button class="btn" onclick="showPage('settings')">设置</button>
+                    <button class="btn" onclick="showPage('about')">说明</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 角色创建页面 -->
+        <div id="character-creation" class="page">
+            <button class="back-btn" onclick="showPage('main-menu')">返回主菜单</button>
+            <div class="content-area">
+                <h2 class="title">创建角色</h2>
+                <form id="character-form">
+                    <div class="form-group">
+                        <label for="player-name">姓名：</label>
+                        <input type="text" id="player-name" placeholder="请输入您的姓名" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>一般属性：</label>
+                        <div class="attribute-display">
+                            <div class="attribute-item">
+                                <div>悟性</div>
+                                <div class="attribute-value" id="intelligence">75</div>
+                            </div>
+                            <div class="attribute-item">
+                                <div>气运</div>
+                                <div class="attribute-value" id="luck">68</div>
+                            </div>
+                        </div>
+                        <button type="button" class="btn" onclick="randomizeAttributes()">重新生成属性</button>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="personal-traits">个人属性：</label>
+                        <textarea id="personal-traits" rows="4" placeholder="请描述您的性别、身材、外貌、特殊、爱好..."></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>背景：</label>
+                        <p style="background: rgba(255,255,255,0.7); padding: 15px; border-radius: 8px; border: 1px solid #d4c4a8;">
+                            作为一个18岁药王谷弟子，请开启你的修仙篇章
+                        </p>
+                    </div>
+                    
+                    <button type="submit" class="btn">开始修仙</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 设置页面 -->
+        <div id="settings" class="page">
+            <button class="back-btn" onclick="showPage('main-menu')">返回主菜单</button>
+            <div class="content-area">
+                <h2 class="title">设置</h2>
+                <form id="settings-form">
+                    <div class="form-group">
+                        <label for="api-url">反代地址：</label>
+                        <input type="url" id="api-url" placeholder="请输入API地址">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="api-key">密钥：</label>
+                        <input type="password" id="api-key" placeholder="请输入API密钥">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="model-select">选择模型：</label>
+                        <select id="model-select">
+                            <option value="">请先拉取模型</option>
+                        </select>
+                        <button type="button" class="btn" onclick="fetchModelList()">拉取模型</button>
+                    </div>
+                    
+                    <button type="button" class="btn" onclick="saveSettings()">保存设置</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- 说明页面 -->
+        <div id="about" class="page">
+            <button class="back-btn" onclick="showPage('main-menu')">返回主菜单</button>
+            <div class="content-area">
+                <h2 class="title">游戏说明</h2>
+                <div class="info-section">
+                    <h3>制作人员</h3>
+                    <p>Janesue和AI</p>
+                </div>
+                <div class="info-section">
+                    <h3>游戏说明</h3>
+                    <p>暂无，留出位置，后续会加上</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 加载游戏页面 -->
+        <div id="load-game" class="page">
+            <button class="back-btn" onclick="showPage('main-menu')">返回主菜单</button>
+            <div class="content-area">
+                <h2 class="title">加载存档</h2>
+                <div class="info-section">
+                    <p>暂无存档</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 游戏主页面 -->
+        <div id="game-main" class="page">
+            
+            <!-- 状态栏 -->
+            <div class="status-bar">
+                <div class="status-item">
+                    <span>时间：</span>
+                    <span id="current-time">天元1年9月8日15时</span>
+                </div>
+                <div class="status-item">
+                    <span>所在地点：</span>
+                    <span id="current-location">药王谷</span>
+                </div>
+                <div class="status-item">
+                    <span>灵石：</span>
+                    <span id="spirit-stone">800</span>
+                </div>
+                <div class="status-item">
+                    <span>修为境界：</span>
+                    <span id="cultivation-level">筑基</span>
+                </div>
+                <div class="status-item">
+                    <span>当前灵力：</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 10%;"></div>
+                    </div>
+                    <span id="spiritual-power">100/1000</span>
+                </div>
+                <div class="status-item">
+                    <span>体力值：</span>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 50%;"></div>
+                    </div>
+                    <span id="stamina-value">5/10</span>
+                </div>
+            </div>
+
+            <!-- 主内容区域 -->
+            <div class="main-content">
+                <!-- NPC区域 -->
+                <div class="npc-area">
+                    <h3>当前区域NPC</h3>
+                    <div id="npc-list">
+                        <!-- NPC列表将在这里动态生成 -->
+                    </div>
+                </div>
+
+                <!-- 故事区域 -->
+                <div class="story-area">
+                    <div id="story-content">
+                        <!-- 故事内容将在这里显示 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 导航按钮 -->
+            <div class="navigation-buttons">
+                <button class="nav-btn" onclick="showPage('map-events')">地图事件</button>
+                <button class="nav-btn" onclick="showPage('player-info')">个人信息</button>
+                <button class="nav-btn" onclick="showPage('relationships')">关系网</button>
+            </div>
+
+            <!-- 互动区域 -->
+            <div class="interaction-area">
+                <!-- 自由输入框 -->
+                <div class="input-area">
+                    <input type="text" id="player-input" placeholder="请输入您想说的话...">
+                    <button onclick="sendMessage()">发送</button>
+                </div>
+
+                <!-- 预设选项按钮 -->
+                <div class="option-buttons" id="option-buttons">
+                    <!-- 选项按钮将在这里动态生成 -->
+                </div>
+
+                <!-- 固定选项 -->
+                <div class="fixed-options">
+                    <button class="btn" onclick="cultivate()">修炼</button>
+                    <button class="btn" onclick="rest()">休息</button>
+                    <button class="btn" onclick="skipYear()">跳过一年</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 地图及事件页面 -->
+        <div id="map-events" class="page">
+            <button class="back-btn" onclick="showPage('game-main')">返回游戏</button>
+            <div class="content-area">
+                <h2 class="title">地图与事件</h2>
+                
+                <div class="map-events-container">
+                                         <!-- 地图区域 -->
+                     <div class="map-section">
+                         <h3>已探索地点</h3>
+                         <div class="location-list">
+                             <!-- 药王谷 -->
+                             <div class="location-group">
+                                 <div class="location-parent" onclick="toggleLocation('yaowanggu')">
+                                     <strong>药王谷</strong>
+                                     <span class="toggle-icon">▼</span>
+                                 </div>
+                                 <div class="location-children" id="yaowanggu-children">
+                                     <div class="location-item" onclick="travelTo('药王谷-东山')">
+                                         <strong>东山</strong>
+                                         <span>体力消耗：1</span>
+                                     </div>
+                                     <div class="location-item" onclick="travelTo('药王谷-师傅')">
+                                         <strong>师傅住处</strong>
+                                         <span>体力消耗：1</span>
+                                     </div>
+                                 </div>
+                             </div>
+                             
+                             <!-- 十万大山 -->
+                             <div class="location-group">
+                                 <div class="location-parent" onclick="toggleLocation('shiwandashan')">
+                                     <strong>十万大山</strong>
+                                     <span class="toggle-icon">▼</span>
+                                 </div>
+                                 <div class="location-children" id="shiwandashan-children">
+                                     <div class="location-item" onclick="travelTo('十万大山-狼妖家')">
+                                         <strong>狼妖家</strong>
+                                         <span>体力消耗：3</span>
+                                     </div>
+                                 </div>
+                             </div>
+                         </div>
+                     </div>
+
+                    <!-- 事件区域 -->
+                    <div class="events-section">
+                        <h3>当前事件</h3>
+                        <div class="event-list">
+                            <div class="event-item">
+                                <strong>药王谷比试</strong>
+                                <p>时间：10月5日</p>
+                                <p>地点：药王谷内</p>
+                                <p>描述：参加药王谷内的比试，展示你的实力。</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 玩家信息及存档页面 -->
+        <div id="player-info" class="page">
+            <button class="back-btn" onclick="showPage('game-main')">返回游戏</button>
+            <div class="content-area">
+                <h2 class="title">个人信息</h2>
+                
+                <div class="info-grid">
+                    <!-- 玩家信息 -->
+                    <div class="info-section">
+                        <h3>基本信息</h3>
+                        <div class="player-stats">
+                            <p><strong>姓名：</strong><span id="player-name-display">未设置</span></p>
+                            <p><strong>境界：</strong><span id="player-level-display">筑基</span></p>
+                            <p><strong>气运：</strong><span id="player-luck-display">68</span></p>
+                            <p><strong>悟性：</strong><span id="player-intelligence-display">75</span></p>
+                        </div>
+                    </div>
+
+                    <!-- 背包 -->
+                    <div class="info-section">
+                        <h3>背包</h3>
+                        <div class="inventory-list">
+                            <div class="inventory-item">
+                                <strong>神秘玉佩</strong>
+                                <p>一枚散发着光芒的青色玉佩</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 日志 -->
+                    <div class="info-section">
+                        <h3>修仙日志</h3>
+                        <div class="log-list">
+                            <div class="log-entry">
+                                <strong>天元1年9月8日15时</strong>
+                                <p>你踏上了征途</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 存档/读档 -->
+                    <div class="info-section">
+                        <h3>存档管理</h3>
+                        <div class="save-load-buttons">
+                            <button class="btn" onclick="saveGame()">保存游戏</button>
+                            <button class="btn" onclick="loadGame()">读取游戏</button>
+                            <button class="btn" id="api-settings-btn" onclick="openApiSettingsFromInfo()">API设置</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 关系网及角色详情页面 -->
+        <div id="relationships" class="page">
+            <button class="back-btn" onclick="showPage('game-main')">返回游戏</button>
+            <div class="content-area">
+                <h2 class="title">关系网</h2>
+                
+                <div class="relationships-container">
+                    <!-- 角色列表 -->
+                    <div class="character-list">
+                        <h3>已识角色</h3>
+                                                 <div class="relationship-list">
+                             <div class="relationship-item" onclick="showCharacterDetail('萧缚')">
+                                 <strong>萧缚</strong>
+                             </div>
+                             <div class="relationship-item" onclick="showCharacterDetail('师兄')">
+                                 <strong>师兄</strong>
+                             </div>
+                             <div class="relationship-item" onclick="showCharacterDetail('师姐')">
+                                 <strong>师姐</strong>
+                             </div>
+                             <div class="relationship-item" onclick="showCharacterDetail('狼妖')">
+                                 <strong>狼妖</strong>
+                             </div>
+                             <div class="relationship-item" onclick="showCharacterDetail('药王')">
+                                 <strong>药王</strong>
+                             </div>
+                             <div class="relationship-item" onclick="showCharacterDetail('小师妹')">
+                                 <strong>小师妹</strong>
+                             </div>
+                             <div class="relationship-item" onclick="showCharacterDetail('神秘人')">
+                                 <strong>神秘人</strong>
+                             </div>
+                         </div>
+                    </div>
+
+                    <!-- 角色详情 -->
+                    <div class="character-detail" id="character-detail">
+                        <h3>角色详情</h3>
+                        <p>点击左侧角色查看详细信息</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 存档弹窗 -->
+        <div id="save-load-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2 id="modal-title">选择存档位</h2>
+                <ul id="save-slots">
+                    <!-- 存档位将由JS动态生成 -->
+                </ul>
+                <button class="btn close-btn" onclick="closeModal()">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+    <!-- 修改故事区域文本堆叠逻辑 -->
+    <script>
+        function appendStoryText(newText) {
+            const storyContent = document.getElementById('story-content');
+            const newParagraph = document.createElement('p');
+            newParagraph.textContent = newText;
+            storyContent.appendChild(newParagraph);
+        }
+    </script>
+
+    <!-- 修改读取游戏逻辑 -->
+    <script>
+        function loadGame() {
+            const availableSaves = ["存档1", "存档2", "存档3"];
+            const saveList = availableSaves.map(save => `<li>${save}</li>`).join('');
+            alert(`可用存档:\n${availableSaves.join('\n')}`);
+        }
+    </script>
+
+    <!-- 存档弹窗逻辑 -->
+    <script>
+        let currentAction = null;
+        let currentSlot = null;
+
+        function getSaveSlots() {
+            // 读取localStorage中的存档名
+            let slots = JSON.parse(localStorage.getItem('saveSlots'));
+            if (!slots) {
+                slots = ["存档1", "存档2", "存档3"];
+            }
+            return slots;
+        }
+
+        function setSaveSlots(slots) {
+            localStorage.setItem('saveSlots', JSON.stringify(slots));
+        }
+
+        function openModal(action) {
+            currentAction = action;
+            const modal = document.getElementById('save-load-modal');
+            const saveSlots = getSaveSlots();
+            const ul = document.getElementById('save-slots');
+            ul.innerHTML = '';
+            saveSlots.forEach((name, idx) => {
+                ul.innerHTML += `<li><input type='text' value='${name}' class='save-slot-name' data-idx='${idx}'><button class='btn' onclick='selectSaveSlot(${idx})'>选择</button></li>`;
+            });
+            modal.classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('save-load-modal').classList.add('hidden');
+        }
+
+        function selectSaveSlot(slotIdx) {
+            const inputs = document.querySelectorAll('.save-slot-name');
+            const slots = Array.from(inputs).map(input => input.value);
+            setSaveSlots(slots); // 保存修改后的存档名
+            if (currentAction === 'save') {
+                // 保存游戏数据到localStorage
+                localStorage.setItem('saveData_' + slotIdx, JSON.stringify({name: slots[slotIdx], time: new Date().toLocaleString()}));
+                alert(`游戏已保存到 ${slots[slotIdx]}`);
+            } else if (currentAction === 'load') {
+                const data = localStorage.getItem('saveData_' + slotIdx);
+                if (data) {
+                    alert(`加载了存档 ${slots[slotIdx]}`);
+                    // 可在此处恢复游戏状态
+                } else {
+                    alert('该存档位暂无数据');
+                }
+            }
+            closeModal();
+        }
+
+        function saveGame() {
+            openModal('save');
+        }
+
+        function loadGame() {
+            openModal('load');
+        }
+
+        // 再续页面展示存档列表
+        function showLoadGameList() {
+            const container = document.querySelector('#load-game .info-section');
+            let html = '<ul>';
+            // 默认存档单独显示
+            const defaultData = localStorage.getItem('saveData_default');
+            if (defaultData) {
+                const save = JSON.parse(defaultData);
+                html += `<li><strong>默认存档</strong> <span style='color:#888;'>${save.time}</span> <button class='btn' onclick='loadDefaultSave()'>读取</button></li>`;
+            } else {
+                html += `<li><strong>默认存档</strong> <span style='color:#888;'>无数据</span> <button class='btn' onclick='loadDefaultSave()'>读取</button></li>`;
+            }
+            // 3个自定义存档
+            const slots = getSaveSlots();
+            slots.forEach((name, idx) => {
+                const data = localStorage.getItem('saveData_' + idx);
+                if (data) {
+                    const save = JSON.parse(data);
+                    html += `<li><strong>${save.name}</strong> <span style='color:#888;'>${save.time}</span> <button class='btn' onclick='loadGameFromList(${idx})'>读取</button></li>`;
+                } else {
+                    html += `<li><strong>${slots[idx]}</strong> <span style='color:#888;'>无数据</span> <button class='btn' onclick='loadGameFromList(${idx})'>读取</button></li>`;
+                }
+            });
+            html += '</ul>';
+            container.innerHTML = html;
+        }
+
+        function loadDefaultSave() {
+            const data = localStorage.getItem('saveData_default');
+            if (data) {
+                const save = JSON.parse(data);
+                if (save.gameState) {
+                    Object.assign(gameState, save.gameState);
+                    updateStatusBar();
+                    alert('已读取默认存档');
+                    showPage('game-main');
+                }
+            } else {
+                alert('暂无默认存档数据');
+            }
+        }
+        function loadGameFromList(idx) {
+            const data = localStorage.getItem('saveData_' + idx);
+            if (data) {
+                const save = JSON.parse(data);
+                alert(`加载了存档 ${save.name}`);
+                // 可在此处恢复游戏状态
+                showPage('game-main'); // 跳转到主游戏页面
+            }
+        }
+        // 页面切换时调用
+        function showPage(pageId) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(pageId).classList.add('active');
+            if (pageId === 'load-game') {
+                showLoadGameList();
+            }
+        }
+    </script>
+
+    <!-- 添加拜访和传讯按钮的事件处理函数，阻止冒泡到角色详情 -->
+    <script>
+    function visitCharacter(event, name) {
+        event.stopPropagation();
+        alert(`你拜访了${name}`);
+    }
+    function messageCharacter(event, name) {
+        event.stopPropagation();
+        alert(`你向${name}传讯`);
+    }
+    </script>
+
+    <!-- 设置页面返回按钮调整 -->
+    <script>
+function openApiSettingsFromInfo() {
+    showPage('settings');
+    const backBtn = document.querySelector('#settings .back-btn');
+    if (backBtn) {
+        backBtn.textContent = '返回游戏';
+        backBtn.onclick = function() { showPage('game-main'); };
+    }
+}
+// 保证从主菜单进入设置时仍为“返回主菜单”
+document.addEventListener('DOMContentLoaded', function() {
+    const backBtn = document.querySelector('#settings .back-btn');
+    if (backBtn) {
+        backBtn.onclick = function() { showPage('main-menu'); };
+    }
+});
+</script>
+</body>
+</html>
